@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <errno.h>
-#include "result.h"
-
-#define STREQ(a, b) !strcmp(a, b)
+#include "common.h"
+#include "lex/lexer.h"
+#include "lex/token.h"
 
 result_t read_file(const char* path) {
     FILE* f = fopen(path, "rb");
@@ -57,7 +57,8 @@ result_t read_file(const char* path) {
 }
 
 typedef struct {
-    char* input, output;
+    char* input;
+    char* output;
 } command_t;
 
 void destroy_command(command_t* cmd) {
@@ -68,9 +69,10 @@ void destroy_command(command_t* cmd) {
 
 result_t parse_command(int argc, char** argv) {
     command_t* result = calloc(1, sizeof(command_t));
-    if (!result)
+    if (!result) {
         if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
         else SIMPLE_ERR(strerror(errno));
+    }
 
     int curr_arg = 0;
     while (curr_arg < argc) {
@@ -145,8 +147,29 @@ int main(int argc, char** argv) {
 
     char* contents = fread_result.payload.ok;
     printf("contents:\n%s\n", contents);
-    free(contents);
 
+    result_t tok_result = tokenize(contents);
+    if (!tok_result.is_ok) {
+        fprintf(stderr, "\x1b[91;1merror:\x1b[0m %s\n", tok_result.payload.err);
+        free(tok_result.payload.err);
+        return 1;
+    }
+    tok_stream_t* toks = tok_result.payload.ok;
+
+    printf("tokens: [\n");
+    for (size_t i = 0; i < toks->len; i++) {
+        if (i > 0) printf(",\n");
+        char* fmt = format_tok(&toks->data[i]);
+        if (fmt) {
+            printf("  %s(`%s`)", tok_ty_to_str(&toks->data[i].ty), fmt);
+            free(fmt);
+        }
+    }
+    printf("\n]");
+    
+    destroy_tok_stream(toks);
+    
+    free(contents);
     destroy_command(cmd);
     free(cmd);
 

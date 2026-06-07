@@ -19,12 +19,16 @@ pub fn build(b: *std.Build) void {
     module.addCSourceFiles(.{
         .files = &.{
             "src/main.c",
+            "src/lex/lexer.c",
+            "src/lex/token.c",
+            "src/common.c"
         },
         .flags = &.{
+            "-O2",
             "-Wall",
             "-Wextra",
             "-std=c23",
-            "-g",
+            "-g"
         },
     });
     
