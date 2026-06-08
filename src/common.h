@@ -26,41 +26,76 @@ typedef struct {\
     size_t cap;\
 } name##_t;\
 name##_t create_##name(void);\
-int push_to_##name(name##_t* vec, item_type item);\
+result_t push_to_##name(name##_t* vec, item_type item);\
 void destroy_##name(name##_t* vec);
 
+#ifdef ENOMEM
+    #define IMPL_VEC(item_type, name, item_destroy) \
+    name##_t create_##name(void) {\
+        return (name##_t){0};\
+    }\
+    result_t push_to_##name(name##_t* vec, item_type item) {\
+        if (vec->len >= vec->cap) {\
+            vec->cap = vec->cap ? (vec->cap * 2) : 64;\
+            item_type* new_data = realloc(vec->data, vec->cap * sizeof(item_type));\
+            if (!new_data) {\
+                if (errno == ENOMEM) SIMPLE_ERR("Out of memory");\
+                else SIMPLE_ERR(strerror(errno));\
+            }\
+            vec->data = new_data;\
+        }\
+        vec->data[vec->len++] = item;\
+        return (result_t){\
+            .is_ok = true,\
+            .payload = { .ok = NULL }\
+        };\
+    }\
+    void destroy_##name(name##_t* vec) {\
+        for (size_t i = 0; i < vec->len; i++)\
+            (item_destroy)(vec->data + i);\
+        free(vec->data);\
+        vec->data = NULL;\
+        vec->len = vec->cap = 0;\
+    }
+#else
 #define IMPL_VEC(item_type, name, item_destroy) \
 name##_t create_##name(void) {\
     return (name##_t){0};\
 }\
-int push_to_##name(name##_t* vec, item_type item) {\
+result_t push_to_##name(name##_t* vec, item_type item) {\
     if (vec->len >= vec->cap) {\
         vec->cap = vec->cap ? (vec->cap * 2) : 64;\
         item_type* new_data = realloc(vec->data, vec->cap * sizeof(item_type));\
-        if (!new_data) return 1;\
+        if (!new_data) {\
+            SIMPLE_ERR(strerror(errno));\
+        }\
         vec->data = new_data;\
     }\
     vec->data[vec->len++] = item;\
-    return 0;\
+    return (result_t){\
+        .is_ok = true,\
+        .payload = { .ok = NULL }\
+    };\
 }\
 void destroy_##name(name##_t* vec) {\
     for (size_t i = 0; i < vec->len; i++)\
-        item_destroy(&vec->data[i]);\
+        (item_destroy)(vec->data + i);\
     free(vec->data);\
     vec->data = NULL;\
     vec->len = vec->cap = 0;\
 }
+#endif
 
-typedef struct {
+typedef struct span {
     size_t start;
     size_t end;
-} span;
+} span_t;
 
-typedef enum {
+typedef enum op {
     OP_PLUS, OP_MINUS, OP_STAR, OP_SLASH, OP_MODULO
-} operat;
+} operator_t;
 
-typedef struct {
+typedef struct result {
     bool is_ok;
     union {
         void* ok;
@@ -68,6 +103,7 @@ typedef struct {
     } payload;
 } result_t;
 
-char* operat_to_str(operat* op);
+char* op_to_str(operator_t* op);
+void empty_destroy(void* _);
 
 #endif

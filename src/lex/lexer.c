@@ -11,8 +11,12 @@
 result_t tokenize(const char* src) {
     tok_stream_t* toks = calloc(1, sizeof(tok_stream_t));
     if (!toks) {
-        if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-        else SIMPLE_ERR(strerror(errno));
+        #ifdef ENOMEM
+            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
+            else SIMPLE_ERR(strerror(errno));
+        #else
+            SIMPLE_ERR(strerror(errno));
+        #endif
     }
 
     if (src) {
@@ -23,41 +27,43 @@ result_t tokenize(const char* src) {
             if (isspace(curr_ch)) continue;
             else if (isdigit(curr_ch)) {
                 size_t start = i - 1;
-                size_t len = 1;
-                while (i < src_len && isdigit(src[i])) {
-                    i++;
-                    len++;
-                }
+                while (i < src_len && (isdigit(src[i]) || src[i] == '_')) i++;
+                size_t len = i - start;
                 char* str_int = strndup(src + start, len);
                 if (!str_int) {
                     destroy_tok_stream(toks);
-                    if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                    else SIMPLE_ERR(strerror(errno));
+                    #ifdef ENOMEM
+                        if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
+                        else SIMPLE_ERR(strerror(errno));
+                    #else
+                        SIMPLE_ERR(strerror(errno));
+                    #endif
                 }
                 long long parsed_int = atoll(str_int);
                 free(str_int);
                 push_to_tok_stream(
                     toks,
                     (tok_t){
-                        .sp = { .start = start, .end = start + len },
+                        .span = { .start = start, .end = start + len },
                         .ty = {
                             .tag = TOK_INT,
                             .payload = { .i = parsed_int }
                         }
                     }
                 );
-            } else if (isalpha(curr_ch)) {
+            } else if (isalpha(curr_ch) || curr_ch == '_') {
                 size_t start = i - 1;
-                size_t len = 1;
-                while (i < src_len && isalnum(src[i])) {
-                    i++;
-                    len++;
-                }
+                while (i < src_len && (isalnum(src[i]) || src[i] == '_')) i++;
+                size_t len = i - start;
                 char* s = strndup(src + start, len);
                 if (!s) {
                     destroy_tok_stream(toks);
-                    if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                    else SIMPLE_ERR(strerror(errno));
+                    #ifdef ENOMEM
+                        if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
+                        else SIMPLE_ERR(strerror(errno));
+                    #else
+                        SIMPLE_ERR(strerror(errno));
+                    #endif
                 }
                 tok_ty_t ty;
                 if (STREQ(s, "proc")) {
@@ -84,196 +90,196 @@ result_t tokenize(const char* src) {
                 push_to_tok_stream(
                     toks,
                     (tok_t){
-                        .sp = { .start = start, .end = start + len },
+                        .span = { .start = start, .end = start + len },
                         .ty = ty
                     }
                 );
             } else {
                 switch (curr_ch) {
                     case '+': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_OP,
                                     .payload = { .op = OP_PLUS }
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case '-': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_OP,
                                     .payload = { .op = OP_MINUS }
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case '*': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_OP,
                                     .payload = { .op = OP_STAR }
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case '/': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_OP,
                                     .payload = { .op = OP_SLASH }
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case '%': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_OP,
                                     .payload = { .op = OP_MODULO }
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case '(': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_LPAREN,
                                     .payload = {0}
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case ')': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_RPAREN,
                                     .payload = {0}
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case '{': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_LCURLY,
                                     .payload = {0}
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case '}': {
-                        if (push_to_tok_stream(
+                        result_t push_result = push_to_tok_stream(
                             toks,
                             (tok_t){
-                                .sp = { .start = i - 1, .end = i },
+                                .span = { .start = i - 1, .end = i },
                                 .ty = {
                                     .tag = TOK_RCURLY,
                                     .payload = {0}
                                 }
                             }
-                        )) {
+                        );
+                        if (!push_result.is_ok) {
                             destroy_tok_stream(toks);
-                            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                            else SIMPLE_ERR(strerror(errno));
+                            return push_result;
                         }
                         break;
                     }
                     case ':': {
                         if (i + 1 < src_len && src[i] == ':') {
                             i++;
-                            if (push_to_tok_stream(
+                            result_t push_result = push_to_tok_stream(
                                 toks,
                                 (tok_t){
-                                    .sp = { .start = i - 2, .end = i },
+                                    .span = { .start = i - 2, .end = i },
                                     .ty = {
                                         .tag = TOK_CCOLON,
                                         .payload = {0}
                                     }
                                 }
-                            )) {
+                            );
+                            if (!push_result.is_ok) {
                                 destroy_tok_stream(toks);
-                                if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                                else SIMPLE_ERR(strerror(errno));
+                                return push_result;
                             }
                         } else {
-                            if (push_to_tok_stream(
+                            result_t push_result = push_to_tok_stream(
                                 toks,
                                 (tok_t){
-                                    .sp = { .start = i - 1, .end = i },
+                                    .span = { .start = i - 1, .end = i },
                                     .ty = {
                                         .tag = TOK_COLON,
                                         .payload = {0}
                                     }
                                 }
-                            )) {
+                            );
+                            if (!push_result.is_ok) {
                                 destroy_tok_stream(toks);
-                                if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-                                else SIMPLE_ERR(strerror(errno));
+                                return push_result;
                             }
                         }
                         break;

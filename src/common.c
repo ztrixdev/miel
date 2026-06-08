@@ -12,7 +12,7 @@
     }
 #endif
 
-char* operat_to_str(operat* op) {
+char* op_to_str(operator_t* op) {
     switch (*op) {
         case OP_PLUS:   return "+";
         case OP_MINUS:  return "-";
@@ -21,3 +21,5 @@ char* operat_to_str(operat* op) {
         case OP_MODULO: return "%";
     }
 }
+
+void empty_destroy(void* _) {}

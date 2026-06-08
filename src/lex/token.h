@@ -4,7 +4,8 @@
 #include <stddef.h>
 #include "../common.h"
 
-typedef struct {
+// todo: add string interning for tokens
+typedef struct tok_ty {
     enum {
         TOK_INT, TOK_IDENT,
         TOK_OP,
@@ -17,12 +18,12 @@ typedef struct {
     union {
         long long i;
         char* s;
-        operat op;
+        operator_t op;
     } payload;
 } tok_ty_t;
 
-typedef struct {
-    span sp;
+typedef struct tok {
+    span_t span;
     tok_ty_t ty;
 } tok_t;
 

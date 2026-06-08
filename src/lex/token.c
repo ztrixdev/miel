@@ -19,14 +19,13 @@ void destroy_tok(tok_t* tok) {
 char* format_tok(tok_t* tok) {
     switch (tok->ty.tag) {
         case TOK_INT: {
-            size_t needed = snprintf(NULL, 0, "%"PRId64, tok->ty.payload.i);
-            break;
+            size_t needed = snprintf(NULL, 0, "%"PRId64, tok->ty.payload.i) + 1;
             char* buf = malloc(needed);
             if (buf) snprintf(buf, needed, "%"PRId64, tok->ty.payload.i);
             return buf;
         }
         case TOK_IDENT:    return strdup(tok->ty.payload.s);
-        case TOK_OP:       return strdup(operat_to_str(&tok->ty.payload.op));
+        case TOK_OP:       return strdup(op_to_str(&tok->ty.payload.op));
         case TOK_LPAREN:   return strdup("(");
         case TOK_RPAREN:   return strdup(")");
         case TOK_LCURLY:   return strdup("{");

@@ -7,6 +7,7 @@
 #include "common.h"
 #include "lex/lexer.h"
 #include "lex/token.h"
+#include "parse/parser.h"
 
 result_t read_file(const char* path) {
     FILE* f = fopen(path, "rb");
@@ -37,8 +38,12 @@ result_t read_file(const char* path) {
     char* buf = malloc((size_t)fsize + 1);
     if (!buf) {
         fclose(f);
-        if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
-        else SIMPLE_ERR(strerror(errno));
+        #ifdef ENOMEM
+            if (errno == ENOMEM) SIMPLE_ERR("Out of memory");
+            else SIMPLE_ERR(strerror(errno));
+        #else
+            SIMPLE_ERR(strerror(errno));
+        #endif
     }
 
     size_t rsize = fread(buf, sizeof(char), fsize, f);
@@ -123,8 +128,8 @@ int main(int argc, char** argv) {
     
     if (!parse_result.is_ok) {
         char* msg = parse_result.payload.err;
-        if (msg) fprintf(stderr, "\x1b[91;1merror:\x1b[0m %s\n", msg);
-        else fprintf(stderr, "\x1b[91;1merror:\x1b[0m Unknown error\n");
+        if (msg) fprintf(stderr, "\x1b[91;1;4merror:\x1b[0m %s\n", msg);
+        else fprintf(stderr, "\x1b[91;1;4merror:\x1b[0m Unknown error\n");
         free(msg);
         return 1;
     }
@@ -133,14 +138,14 @@ int main(int argc, char** argv) {
 
     if (cmd->input) printf("input: %s\n", cmd->input);
     else {
-        fprintf(stderr, "\x1b[91;1merror:\x1b[0m Expected input path\n");
+        fprintf(stderr, "\x1b[91;1;4merror:\x1b[0m Expected input path\n");
         return 1;
     }
     if (cmd->output) printf("output: %s\n", cmd->output);
 
     result_t fread_result = read_file(cmd->input);
     if (!fread_result.is_ok) {
-        fprintf(stderr, "\x1b[91;1merror:\x1b[0m %s\n", fread_result.payload.err);
+        fprintf(stderr, "\x1b[91;1;4merror:\x1b[0m %s\n", fread_result.payload.err);
         free(fread_result.payload.err);
         return 1;
     }
@@ -150,7 +155,7 @@ int main(int argc, char** argv) {
 
     result_t tok_result = tokenize(contents);
     if (!tok_result.is_ok) {
-        fprintf(stderr, "\x1b[91;1merror:\x1b[0m %s\n", tok_result.payload.err);
+        fprintf(stderr, "\x1b[91;1;4merror:\x1b[0m %s\n", tok_result.payload.err);
         free(tok_result.payload.err);
         return 1;
     }
@@ -161,13 +166,20 @@ int main(int argc, char** argv) {
         if (i > 0) printf(",\n");
         char* fmt = format_tok(&toks->data[i]);
         if (fmt) {
-            printf("  %s(`%s`)", tok_ty_to_str(&toks->data[i].ty), fmt);
+            printf(
+                "  %s(`%s`) (%zu..%zu)",
+                tok_ty_to_str(&toks->data[i].ty),
+                fmt,
+                toks->data[i].span.start,
+                toks->data[i].span.end
+            );
             free(fmt);
         }
     }
-    printf("\n]");
-    
-    destroy_tok_stream(toks);
+    printf("\n]\n");
+
+    parser_t parser = create_parser(toks);
+    destroy_parser(&parser);
     
     free(contents);
     destroy_command(cmd);
