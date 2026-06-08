@@ -1,6 +1,7 @@
 mod cli;
 mod common;
 mod lexer;
+mod parser;
 
 use std::{env, fs};
 use colored::Colorize;
@@ -8,6 +9,8 @@ use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::term::termcolor::ColorSpec;
 use codespan_reporting::term::{self, Chars, Config, Styles};
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+
+use crate::common::Context;
 
 fn main() {
     let command = match cli::parse_command(env::args()) {
@@ -71,12 +74,21 @@ fn main() {
     );
 
     let mut rodeo = lasso::Rodeo::new();
+    
     let tokens = match lexer::tokenize(file_id, &contents, &mut rodeo) {
         Ok(o) => o,
         Err(err) => {
-            let _ = term::emit(&mut writer, &config, &files, &err);
+            term::emit(&mut writer, &config, &files, &err).expect("Diagnostic formatting failed");
             return;
         }
     };
-    println!("tokens: {tokens:#?}");
+    let ctx = Context { rodeo: &rodeo, source_id: file_id };
+    let ast = match parser::Parser::new(&ctx, &tokens).parse() {
+        Ok(o) => o,
+        Err(err) => {
+            term::emit(&mut writer, &config, &files, &err).expect("Diagnostic formatting failed");
+            return;
+        }
+    };
+    println!("{ast:#?}");
 }

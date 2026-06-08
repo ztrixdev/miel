@@ -1,10 +1,10 @@
-mod token;
+pub mod token;
 
 use token::*;
 use crate::common::{Operator, Span};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 
-pub fn tokenize(source_id: usize, source: &str, rodeo: &mut lasso::Rodeo) -> Result<Vec<Token>, Diagnostic<usize>> {
+pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Rodeo) -> Result<Vec<Token<'lex>>, Diagnostic<usize>> {
     let mut source_chars = source.char_indices().peekable();
     let mut tokens = Vec::new();
 
@@ -50,7 +50,7 @@ pub fn tokenize(source_id: usize, source: &str, rodeo: &mut lasso::Rodeo) -> Res
             ':' => if let Some(&(pos, ':')) = source_chars.peek() {
                 source_chars.next();
                 tokens.push(Token {
-                    kind: TokenKind::CColon,
+                    kind: TokenKind::Operator(Operator::CColon),
                     span: Span { start, end: pos + ':'.len_utf8(), source_id }
                 });
             } else {
@@ -59,18 +59,24 @@ pub fn tokenize(source_id: usize, source: &str, rodeo: &mut lasso::Rodeo) -> Res
                     span: Span { start, end: start + ch.len_utf8(), source_id }
                 });
             },
+            ',' => tokens.push(Token {
+                kind: TokenKind::Comma,
+                span: Span { start, end: start + ch.len_utf8(), source_id }
+            }),
             '0'..='9' => {
                 let mut end: usize = start + 1;
                 let mut is_float = false;
-                while let Some((pos, ch)) = source_chars.next() {
+                while let Some(&(pos, ch)) = source_chars.peek() {
                     if ch.is_ascii_digit() || ch == '_' {
                         end = pos + ch.len_utf8();
                     } else if ch == '.' && !is_float {
                         is_float = true;
                         end = pos + ch.len_utf8();
                     } else {
+                        end = pos;
                         break;
                     }
+                    source_chars.next();
                 }
                 let kind = if is_float {
                     TokenKind::FloatLit(source[start..end]
@@ -85,21 +91,19 @@ pub fn tokenize(source_id: usize, source: &str, rodeo: &mut lasso::Rodeo) -> Res
                 };
                 tokens.push(Token {
                     kind,
-                    span: Span {
-                        start,
-                        end: start + ch.len_utf8(),
-                        source_id
-                    }
+                    span: Span { start, end, source_id }
                 });
             },
             ch if ch.is_alphabetic() || ch == '_' => {
                 let mut end: usize = start + 1;
-                while let Some((pos, ch)) = source_chars.next() {
+                while let Some(&(pos, ch)) = source_chars.peek() {
                     if ch.is_alphanumeric() || ch == '_' {
                         end = pos + ch.len_utf8();
                     } else {
+                        end = pos;
                         break;
                     }
+                    source_chars.next();
                 }
                 let kind = match &source[start..end] {
                     "proc" => TokenKind::KwProc,
@@ -109,21 +113,33 @@ pub fn tokenize(source_id: usize, source: &str, rodeo: &mut lasso::Rodeo) -> Res
                 };
                 tokens.push(Token {
                     kind,
-                    span: Span {
-                        start,
-                        end: start + ch.len_utf8(),
-                        source_id
-                    }
+                    span: Span { start, end, source_id }
                 });
             },
-            other => return Err(
-                Diagnostic::error()
-                    .with_message(format!("unrecognized character `{other}`"))
+            '"' => {
+                let mut end: usize = start + 1;
+                while let Some((pos, ch)) = source_chars.next() {
+                    end = pos + ch.len_utf8();
+                    if ch == '"' {
+                        tokens.push(Token {
+                            kind: TokenKind::StringLit(&source[(start + 1)..pos]),
+                            span: Span { start, end, source_id }
+                        });
+                    }
+                }
+                return Err(Diagnostic::error()
+                    .with_message(format!("Unterminated string"))
                     .with_labels(vec![
-                        Label::primary(source_id, start..(start+1))
-                            .with_message("unknown character")
-                    ])
-            ),
+                        Label::primary(source_id, start..end)
+                            .with_message("unterminated string")
+                    ]));
+            },
+            other => return Err(Diagnostic::error()
+                .with_message(format!("Unrecognized character `{other}`"))
+                .with_labels(vec![
+                    Label::primary(source_id, start..(start+1))
+                        .with_message("unknown character")
+                ])),
         }
     }
 
