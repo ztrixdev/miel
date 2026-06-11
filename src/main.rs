@@ -3,14 +3,13 @@ mod common;
 mod lexer;
 mod parser;
 
-use std::{env, fs};
-use colored::Colorize;
 use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::term::termcolor::ColorSpec;
-use codespan_reporting::term::{self, Chars, Config, Styles};
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
-
-use crate::common::Context;
+use codespan_reporting::term::{self, Chars, Config, Styles};
+use colored::Colorize;
+use common::Context;
+use std::{env, fs};
 
 fn main() {
     let command = match cli::parse_command(env::args()) {
@@ -29,14 +28,15 @@ fn main() {
             return;
         }
     };
-    
+
     let mut files = SimpleFiles::new();
     let file_id = files.add(&command.input, &contents);
     let config = {
         let mut styles = Styles::default();
         {
             let mut cspec = ColorSpec::new();
-            cspec.set_fg(Some(term::termcolor::Color::Red))
+            cspec
+                .set_fg(Some(term::termcolor::Color::Red))
                 .set_bold(true)
                 .set_underline(true);
             styles.header_error = cspec;
@@ -68,13 +68,14 @@ fn main() {
         }
     };
 
-    let mut writer = StandardStream::stderr(
-        if command.no_color { ColorChoice::Never } 
-        else { ColorChoice::Always }
-    );
+    let mut writer = StandardStream::stderr(if command.no_color {
+        ColorChoice::Never
+    } else {
+        ColorChoice::Always
+    });
 
     let mut rodeo = lasso::Rodeo::new();
-    
+
     let tokens = match lexer::tokenize(file_id, &contents, &mut rodeo) {
         Ok(o) => o,
         Err(err) => {
@@ -82,7 +83,10 @@ fn main() {
             return;
         }
     };
-    let ctx = Context { rodeo: &rodeo, source_id: file_id };
+    let ctx = Context {
+        rodeo: &rodeo,
+        source_id: file_id,
+    };
     let ast = match parser::Parser::new(&ctx, &tokens).parse() {
         Ok(o) => o,
         Err(err) => {

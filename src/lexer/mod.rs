@@ -1,10 +1,9 @@
 pub mod token;
 
 use token::*;
-use crate::common::{Operator, Span};
-use codespan_reporting::diagnostic::{Diagnostic, Label};
+use crate::common::{Operator, Span, Diag, Label};
 
-pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Rodeo) -> Result<Vec<Token<'lex>>, Diagnostic<usize>> {
+pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Rodeo) -> Result<Vec<Token<'lex>>, Diag> {
     let mut source_chars = source.char_indices().peekable();
     let mut tokens = Vec::new();
 
@@ -50,8 +49,14 @@ pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Ro
             ':' => if let Some(&(pos, ':')) = source_chars.peek() {
                 source_chars.next();
                 tokens.push(Token {
-                    kind: TokenKind::Operator(Operator::CColon),
+                    kind: TokenKind::CColon,
                     span: Span { start, end: pos + ':'.len_utf8(), source_id }
+                });
+            } else if let Some(&(pos, '=')) = source_chars.peek() {
+                source_chars.next();
+                tokens.push(Token {
+                    kind: TokenKind::Walrus,
+                    span: Span { start, end: pos + '='.len_utf8(), source_id }
                 });
             } else {
                 tokens.push(Token {
@@ -61,6 +66,10 @@ pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Ro
             },
             ',' => tokens.push(Token {
                 kind: TokenKind::Comma,
+                span: Span { start, end: start + ch.len_utf8(), source_id }
+            }),
+            '=' => tokens.push(Token {
+                kind: TokenKind::Assign,
                 span: Span { start, end: start + ch.len_utf8(), source_id }
             }),
             '0'..='9' => {
@@ -109,6 +118,7 @@ pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Ro
                     "proc" => TokenKind::KwProc,
                     "func" => TokenKind::KwFunc,
                     "callable" => TokenKind::KwCallable,
+                    "nil" => TokenKind::KwNil,
                     other => TokenKind::Identifier(rodeo.get_or_intern(other))
                 };
                 tokens.push(Token {
@@ -127,14 +137,14 @@ pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Ro
                         });
                     }
                 }
-                return Err(Diagnostic::error()
+                return Err(Diag::error()
                     .with_message(format!("Unterminated string"))
                     .with_labels(vec![
                         Label::primary(source_id, start..end)
                             .with_message("unterminated string")
                     ]));
             },
-            other => return Err(Diagnostic::error()
+            other => return Err(Diag::error()
                 .with_message(format!("Unrecognized character `{other}`"))
                 .with_labels(vec![
                     Label::primary(source_id, start..(start+1))

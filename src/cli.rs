@@ -17,21 +17,21 @@ pub fn parse_command(mut args: Args) -> Result<Command, String> {
             "--output" | "-o" => match (args.next(), output) {
                 (Some(a), None) => output = Some(a),
                 (_, Some(_)) => return Err("Output path already defined".to_string()),
-                (None, _) => return Err(format!("Expected output path after `{arg}` argument"))
+                (None, _) => return Err(format!("Expected output path after `{arg}` argument")),
             },
             "--no-color" => no_color = true,
             other if other.starts_with("-") => {
                 for ch in other[1..].chars() {
-                    if ch == 'c' {
-                        no_color = true;
+                    match ch {
+                        'c' => no_color = true,
+                        _ => continue,
                     }
-                    // other flags (add later)
                 }
-            },
+            }
             _ => match input {
                 None => input = Some(arg),
                 Some(_) => return Err("Input path already defined".to_string()),
-            }
+            },
         }
     }
     if input.is_none() {
@@ -39,6 +39,7 @@ pub fn parse_command(mut args: Args) -> Result<Command, String> {
     }
     Ok(Command {
         input: input.unwrap(),
-        output, no_color
+        output,
+        no_color,
     })
 }

@@ -1,12 +1,15 @@
-# Miel
-
-![status: 0.0.1 Pre-Alpha](https://shields.io/badge/status-0.0.1%20Pre--Alpha-purple)
+<div align="center">
+    <h1>Miel</h1>
+    <img src="https://shields.io/badge/status-0.0.1%20Pre--Alpha-purple" alt="status: 0.1.0 Pre-Alpha">
+</div>
 
 > **🚧 EARLY DEVELOPMENT 🚧:** Miel is in very early development. Syntax can change and documentation is nonexistent. Now is the perfect time to get involved to help Miel stabilize.
 
 A cozy systems programming language.
 
 ```haskell
+#Import "std/fs.mi"
+
 func Add :: callable(a: int, b: int): int {
     a + b
 }
@@ -20,6 +23,11 @@ proc Main :: callable() {
     ;; affine types ensure memory safety
     SomeOperation(data)
     SomeOperation(data)     ;; error: `data` was already moved
+}
+
+;; permission types help prove secure data access at compile-time
+func GetContent :: callable(file: &fs.File with Read) {
+    ;; read file...
 }
 ```
 
@@ -44,6 +52,12 @@ cd miel
 cargo build --release
 # result should be in ./target/release with the name miel.exe, probably
 ```
+
+## Philosophy
+
+Miel was created just for the joy of creation (no, not a FNAF reference).
+
+More on the philosphy at [PHILOSOPHY.md](./PHILOSOPHY.md)
 
 ## License
 

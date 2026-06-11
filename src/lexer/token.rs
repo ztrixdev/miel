@@ -9,7 +9,9 @@ pub enum TokenKind<'tok> {
     Operator(Operator),
     LParen, RParen, LCurly, RCurly,
     Colon, Comma,
-    KwProc, KwFunc, KwCallable
+    CColon, Walrus, Assign,
+    KwProc, KwFunc, KwCallable,
+    KwNil,
 }
 
 impl<'tok> TokenKind<'tok> {
@@ -26,9 +28,13 @@ impl<'tok> TokenKind<'tok> {
             Self::RCurly => "}".to_string(),
             Self::Colon => ":".to_string(),
             Self::Comma => ",".to_string(),
+            Self::CColon => "::".to_string(),
+            Self::Walrus => ":=".to_string(),
+            Self::Assign => "=".to_string(),
             Self::KwProc => "proc".to_string(),
             Self::KwFunc => "func".to_string(),
             Self::KwCallable => "callable".to_string(),
+            Self::KwNil => "nil".to_string(),
         }
     }
 }
