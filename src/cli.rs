@@ -24,10 +24,14 @@ pub fn parse_command(mut args: Args) -> Result<Command, String> {
                 for ch in other[1..].chars() {
                     match ch {
                         'c' => no_color = true,
+                        'h' => return Err("print help".to_string()),
+                        'V' => return Err("print version".to_string()),
                         _ => continue,
                     }
                 }
-            }
+            },
+            "--help" => return Err("print help".to_string()),
+            "--version" => return Err("print version".to_string()),
             _ => match input {
                 None => input = Some(arg),
                 Some(_) => return Err("Input path already defined".to_string()),

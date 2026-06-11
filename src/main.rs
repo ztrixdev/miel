@@ -11,12 +11,42 @@ use colored::Colorize;
 use common::Context;
 use std::{env, fs};
 
+const STATUS: &'static str = "Pre-Alpha";
+
+fn print_version() {
+    println!("Miel Language Compiler, Version {} {}", env!("CARGO_PKG_VERSION"), STATUS);
+    println!("Copyright 2026 tayenp");
+    println!("Licensed under the Apache License, Version 2.0");
+}
+
+fn print_help() {
+    print_version();
+    println!("");
+    println!("Usage: miel [OPTIONS] <INPUT>");
+    println!("");
+    println!("Options:");
+    println!("  -h, --help                Print this help message");
+    println!("  -V, --version             Print version");
+    println!("  -o, --output <FILE>       Write output to FILE");
+    println!("  -c, --no-color            Disable colored output");
+}
+
 fn main() {
     let command = match cli::parse_command(env::args()) {
         Ok(o) => o,
-        Err(err) => {
-            eprintln!("{}: {err}", "error".red().bold().underline());
-            return;
+        Err(err) => match &*err {
+            "print help" => {
+                print_help();
+                return;
+            },
+            "print version" => {
+                print_version();
+                return;
+            },
+            other => {
+                eprintln!("{}: {other}", "error".red().bold().underline());
+                return;
+            },
         }
     };
     colored::control::set_override(!command.no_color);
