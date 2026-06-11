@@ -14,7 +14,12 @@ func Add :: callable(a: int, b: int): int {
     a + b
 }
 
-proc Main :: callable() {
+;; permission types help prove secure data access at compile-time
+func ReadFileToString :: callable(path: strbuf): strbuf @fs.FsRead {
+    ;; read file
+}
+
+proc Main :: callable() @Root {
     x := 5                  ;; type inference
     y: int = 10             ;; explicit typing
     z := Add(x, Add(5, y))
@@ -23,11 +28,12 @@ proc Main :: callable() {
     ;; affine types ensure memory safety
     SomeOperation(data)
     SomeOperation(data)     ;; error: `data` was already moved
-}
 
-;; permission types help prove secure data access at compile-time
-func GetContent :: callable(file: &fs.File with Read) {
-    ;; read file...
+    acquire fs.FsRead from Root
+    contents = ReadFileToString("config.toml")
+    release fs.FsRead       ;; release when not needed
+    
+    contents = ReadFileToString("config.toml")  ;; error: fs.FsRead is absent
 }
 ```
 
