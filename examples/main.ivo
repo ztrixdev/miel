@@ -1,5 +1,0 @@
-func Add :: callable(a: int32, b: int32): int32 { a + b }
-
-proc Main :: callable() {
-    result := Add(5, 3)
-}
