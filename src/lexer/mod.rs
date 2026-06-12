@@ -10,6 +10,16 @@ pub fn tokenize<'lex>(source_id: usize, source: &'lex str, rodeo: &mut lasso::Ro
     while let Some((start, ch)) = source_chars.next() {
         match ch {
             ' ' | '\t' | '\n' | '\r' => continue,
+            ';' => if let Some((_, ';')) = source_chars.peek() {
+                while let Some((_, ch)) = source_chars.next() {
+                    if ch == '\n' { break }
+                }
+            } else {
+                tokens.push(Token {
+                    kind: TokenKind::Semicolon,
+                    span: Span { start, end: start + ch.len_utf8(), source_id }
+                });
+            },
             '+' => tokens.push(Token {
                 kind: TokenKind::Operator(Operator::Plus),
                 span: Span { start, end: start + ch.len_utf8(), source_id }

@@ -10,6 +10,7 @@ pub enum TokenKind<'tok> {
     LParen, RParen, LCurly, RCurly,
     Colon, Comma,
     CColon, Walrus, Assign,
+    Semicolon,
     KwProc, KwFunc, KwCallable,
     KwNil,
 }
@@ -31,6 +32,7 @@ impl<'tok> TokenKind<'tok> {
             Self::CColon => "::".to_string(),
             Self::Walrus => ":=".to_string(),
             Self::Assign => "=".to_string(),
+            Self::Semicolon => ';'.to_string(),
             Self::KwProc => "proc".to_string(),
             Self::KwFunc => "func".to_string(),
             Self::KwCallable => "callable".to_string(),
